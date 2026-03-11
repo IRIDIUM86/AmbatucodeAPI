@@ -1,12 +1,13 @@
 # Ambatucode API
 
-A paid API for machine learning-based product recommendations for Food and Beverages SMEs based on government events.
+A **free** API providing machine‑learning‑driven product recommendations for Food and Beverages SMEs. Clients upload their sales CSV and the service combines it with public government event data to suggest what to sell during upcoming events.
 
 ## Features
 
-- Upload sales data (CSV)
-- Train XGBoost model on sales data merged with government event data
-- Get product recommendations for upcoming events
+- Free to use with no authentication or billing
+- Upload client-specific sales data via CSV
+- Automatically train an XGBoost model per client using government event data
+- Receive top‑product recommendations for future events
 
 ## Setup
 
@@ -15,11 +16,12 @@ A paid API for machine learning-based product recommendations for Food and Bever
 
 ## API Endpoints
 
-- `POST /upload-data/{client_id}`: Upload sales CSV data
-- `POST /train/{client_id}`: Start training the model
-- `GET /recommend/{client_id}`: Get product recommendations
+- `POST /upload-data/{client_id}` – upload a CSV containing `date`, `product`, and `sales_volume` columns
+- `POST /train/{client_id}` – trigger background training for that client’s data
+- `POST /test/{client_id}` – optionally upload a test CSV to evaluate model accuracy
+- `GET /recommend/{client_id}` – return top product recommendations for upcoming events
 
-All endpoints require `X-API-Key` header with a valid API key.
+No API key or authentication is required; the `client_id` is simply a namespace to separate different users or experiments.
 
 ## Data Format
 
@@ -29,6 +31,6 @@ Government API should return JSON with `date` and `event_type` fields.
 
 ## Notes
 
-- This is a foundational codebase. In production, add proper database, authentication, billing, etc.
-- Government API URL is placeholder; replace with actual API.
-- For direct DB connection, add endpoints to accept DB credentials and query data.
+- The current implementation uses in‑memory storage and expects CSVs; consider persistent storage for production.
+- Government API URL is a placeholder; configure your own API key in `.env` (e.g. Google Calendar public holidays).
+- `client_id` can be any identifier and does not imply authentication or payment.

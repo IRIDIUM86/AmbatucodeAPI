@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-xgboost
 pandas
+xgboost
 requests
-python-multipart
+python-dotenv
