@@ -10,7 +10,7 @@ A paid API for machine learning-based product recommendations for Food and Bever
 
 ## Setup
 
-1. Install dependencies: `pip install -r requirements.txt`
+1. Install dependencies: `pip install -r requirements.txt` or `python -m pip install -r requirements.txt`
 2. Run the server: `uvicorn main:app --reload`
 
 ## API Endpoints
