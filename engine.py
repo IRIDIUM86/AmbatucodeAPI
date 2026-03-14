@@ -51,8 +51,20 @@ class DataEngine:
 
     def fit_date(self, df: pd.DataFrame):
         # 1. Ensure the client's date column is in datetime format
-        df[self.date_var_name] = pd.to_datetime(df[self.date_var_name], format='mixed').dt.normalize()
-        
+        #    Use dayfirst parsing because the input data may contain dates like "16/5/2023".
+        #    If parsing fails, we keep NaT and handle it gracefully.
+        df[self.date_var_name] = pd.to_datetime(
+            df[self.date_var_name].astype(str).str.strip(),
+            errors="coerce",
+            dayfirst=True,
+        ).dt.normalize()
+
+        # If there are no valid dates, skip enrichment and return the original DataFrame.
+        if df[self.date_var_name].dropna().empty:
+            df["event_name"] = "None"
+            df["event_type"] = "None"
+            return df
+
         # 2. Identify the range of dates in the client's data to limit API calls
         min_date = df[self.date_var_name].min().strftime('%Y-%m-%dT00:00:00Z')
         max_date = df[self.date_var_name].max().strftime('%Y-%m-%dT23:59:59Z')
@@ -175,7 +187,15 @@ class DataEngine:
     
     def get_future_events(self, df: pd.DataFrame):
         # 1. Get the max date and format it correctly for the API
-        max_date_dt = pd.to_datetime(df[self.date_var_name]).max()
+        max_date_dt = pd.to_datetime(
+            df[self.date_var_name].astype(str).str.strip(),
+            errors="coerce",
+            dayfirst=True,
+        ).max()
+
+        if pd.isna(max_date_dt):
+            return pd.DataFrame()
+
         start_date_str = max_date_dt.strftime('%Y-%m-%dT23:59:59Z')
 
         future_event_list = []
