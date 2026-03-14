@@ -1,36 +1,39 @@
 # Ambatucode API
 
-A **free** API providing machine‑learning‑driven product recommendations for Food and Beverages SMEs. Clients upload their sales CSV and the service combines it with public government event data to suggest what to sell during upcoming events.
+A **free** API providing machine-learning-driven product recommendations for Food and Beverages SMEs. Clients upload their sales CSV and the service combines it with public event data from Ticketmaster to suggest what to sell during upcoming events.
 
 ## Features
 
 - Free to use with no authentication or billing
 - Upload client-specific sales data via CSV
-- Automatically train an XGBoost model per client using government event data
-- Receive top‑product recommendations for future events
+- Automatically train an XGBoost model using event data from Ticketmaster API
+- Receive product recommendations for future events
 
 ## Setup
 
 1. Install dependencies: `pip install -r requirements.txt` or `python -m pip install -r requirements.txt`
-2. Run the server: `uvicorn main:app --reload`
+2. Set up environment: Create a `.env` file with `EVENT_API_KEY=your_ticketmaster_api_key`
+3. Run the server: `uvicorn main:app --reload`
 
 ## API Endpoints
 
-- `POST /upload-data/{client_id}` – upload a CSV containing `date`, `product`, and `sales_volume` columns
-- `POST /train/{client_id}` – trigger background training for that client’s data
-- `POST /test/{client_id}` – optionally upload a test CSV to evaluate model accuracy
-- `GET /recommend/{client_id}` – return top product recommendations for upcoming events
+- `POST /upload-csv` – Upload a CSV file to preview its data (returns row count and first 5 rows)
+- `POST /train-model` – Upload a CSV file, provide `product_var_name` and `date_var_name` as form data, to train the XGBoost model
+- `POST /predict-recommendation` – Upload a CSV file, provide `product_var_name` and `date_var_name` as form data, to get product recommendations for upcoming events
 
-No API key or authentication is required; the `client_id` is simply a namespace to separate different users or experiments.
+No API key or authentication is required for the endpoints.
 
 ## Data Format
 
-Sales data CSV should have columns: `date`, `product`, `sales_volume`
+Sales data CSV should have columns including:
+- `Item` (or specified product column): The product identifier
+- `Transaction Date` (or specified date column): The date of the transaction
+- Other features like `Quantity`, `Price Per Unit`, `Total Spent`, `Payment Method`, `Location`
 
-Government API should return JSON with `date` and `event_type` fields.
+The API fetches event data from Ticketmaster and enriches the data for training and prediction.
 
 ## Notes
 
-- The current implementation uses in‑memory storage and expects CSVs; consider persistent storage for production.
-- Government API URL is a placeholder; configure your own API key in `.env` (e.g. Google Calendar public holidays).
-- `client_id` can be any identifier and does not imply authentication or payment.
+- The model is trained per request and saved in the `models/` directory.
+- Uses Ticketmaster Discovery API for event data; ensure your API key is valid.
+- For production, consider persistent storage and error handling improvements.
