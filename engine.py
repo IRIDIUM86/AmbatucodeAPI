@@ -51,8 +51,6 @@ class DataEngine:
 
     def fit_date(self, df: pd.DataFrame):
         # 1. Ensure the client's date column is in datetime format
-        #    Use dayfirst parsing because the input data may contain dates like "16/5/2023".
-        #    If parsing fails, we keep NaT and handle it gracefully.
         df[self.date_var_name] = pd.to_datetime(
             df[self.date_var_name].astype(str).str.strip(),
             errors="coerce",
@@ -72,70 +70,78 @@ class DataEngine:
         event_list = []
 
         # 3. Fetch events from API within this specific timeframe
-        params = {
-            "apikey": self.api_key,
-            "startDateTime": min_date,
-            "endDateTime": max_date,
-            "size": 1000,
-            "sort": "date,asc"
-        }
+        for page in range(5):
+            params = {
+                "apikey": self.api_key,
+                "startDateTime": min_date,
+                "endDateTime": max_date,
+                "size": 200,
+                "page": page,
+                "sort": "date,asc"
+            }
 
-        try:
-            response = requests.get(f"{self.base_url}events.json", params=params)
-            response.raise_for_status()
-            api_data = response.json()
-            
-            if "_embedded" in api_data:
-                for event in api_data["_embedded"]["events"]:
-                    # Extract the date only (YYYY-MM-DD) for merging
-                    raw_date = event.get("dates", {}).get("start", {}).get("localDate")
-                    if raw_date:
-                        # Collect name and the segment/type ID
-                        classifications = event.get("classifications", [{}])
-                        segment_name = classifications[0].get("segment", {}).get("name", "Other")
-                    
-                        event_list.append({
-                            "api_event_date": pd.to_datetime(raw_date).normalize(),
-                            "event_name": event.get("name"),
-                            "event_type": segment_name
-                        })
+            try:
+                response = requests.get(f"{self.base_url}events.json", params=params)
 
-            if not event_list:
+                if response.status_code == 429:
+                    print(f"Rate limit hit. Sleeping for 0.5 seconds...")
+                    time.sleep(0.5)
+                    response = requests.get(f"{self.base_url}events.json", params=params)
+
+                response.raise_for_status()
+                api_data = response.json()
+                
+                if "_embedded" in api_data:
+                    for event in api_data["_embedded"]["events"]:
+                        # Extract the date only (YYYY-MM-DD) for merging
+                        raw_date = event.get("dates", {}).get("start", {}).get("localDate")
+                        if raw_date:
+                            # Collect name and the segment/type ID
+                            classifications = event.get("classifications", [{}])
+                            segment_name = classifications[0].get("segment", {}).get("name", "Other")
+                        
+                            event_list.append({
+                                "api_event_date": pd.to_datetime(raw_date).normalize(),
+                                "event_name": event.get("name"),
+                                "event_type": segment_name
+                            })
+
+                if not event_list:
+                    df["event_name"] = "None"
+                    df["event_type"] = "None"
+                    return df
+                
+                # 4. Create a reference DataFrame from the API results
+                api_df = pd.DataFrame(event_list)
+
+                # 5. AGGREGATE: Join multiple events/types into single strings
+                # This ensures all event types for that day are included.
+                api_df_cleaned = api_df.groupby("api_event_date").agg({
+                    "event_name": lambda x: "|".join(x.unique()),
+                    "event_type": lambda x: "|".join(x.unique()) 
+                }).reset_index()
+
+                # 6. Merge: Left join ensures we keep all original client data
+                enriched_df = pd.merge(
+                    df, 
+                    api_df_cleaned, 
+                    left_on=self.date_var_name, 
+                    right_on="api_event_date", 
+                    how="left"
+                )
+
+                # 7. Final Cleanup
+                enriched_df["event_type"] = enriched_df["event_type"].fillna("None")
+                enriched_df["event_name"] = enriched_df["event_name"].fillna("None")
+                enriched_df.drop(columns=["api_event_date"], inplace=True)
+
+                return enriched_df
+
+            except Exception as e:
+                print(f"Error during date fitting: {e}")
                 df["event_name"] = "None"
                 df["event_type"] = "None"
                 return df
-            
-            # 4. Create a reference DataFrame from the API results
-            api_df = pd.DataFrame(event_list)
-
-            # 5. AGGREGATE: Join multiple events/types into single strings
-            # This ensures all event types for that day are included.
-            api_df_cleaned = api_df.groupby("api_event_date").agg({
-                "event_name": lambda x: "|".join(x.unique()),
-                "event_type": lambda x: "|".join(x.unique()) 
-            }).reset_index()
-
-            # 6. Merge: Left join ensures we keep all original client data
-            enriched_df = pd.merge(
-                df, 
-                api_df_cleaned, 
-                left_on=self.date_var_name, 
-                right_on="api_event_date", 
-                how="left"
-            )
-
-            # 7. Final Cleanup
-            enriched_df["event_type"] = enriched_df["event_type"].fillna("None")
-            enriched_df["event_name"] = enriched_df["event_name"].fillna("None")
-            enriched_df.drop(columns=["api_event_date"], inplace=True)
-
-            return enriched_df
-
-        except Exception as e:
-            print(f"Error during date fitting: {e}")
-            df["event_name"] = "None"
-            df["event_type"] = "None"
-            return df
 
     def train_model(self, df: pd.DataFrame):
         df = self.fit_date(df) # Enrich the data with event information based on the date
