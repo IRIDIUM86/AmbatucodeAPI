@@ -1,6 +1,6 @@
 fastapi
-uvicorn
-pandas
-xgboost
-requests
+pandas==2.2.2 --no-cache-dir
+xgboost-cpu
+scikit-learn
 python-dotenv
+requests

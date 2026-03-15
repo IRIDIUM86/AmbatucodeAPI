@@ -30,7 +30,7 @@ class DataEngine:
         self.num_products = len(self.product_mappings)
 
         # Load base model
-        self.MODEL_DIR = "models"
+        self.MODEL_DIR = "/tmp/models"
         os.makedirs(self.MODEL_DIR, exist_ok=True)
         self.base_model_path = f"{self.MODEL_DIR}/base_food_bev_model.json"
         self.load_base_model()
