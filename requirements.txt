@@ -1,5 +1,5 @@
 fastapi
-pandas==2.2.2 --no-cache-dir
+pandas==2.2.2
 xgboost-cpu
 scikit-learn
 python-dotenv
