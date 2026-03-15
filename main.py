@@ -2,6 +2,7 @@ import uvicorn
 import csv
 import io
 import os
+import shutil
 import tempfile
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
@@ -76,7 +77,6 @@ async def train_model(product_var_name: Annotated[str, Form()], date_var_name: A
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
 
-
 @app.post("/predict-recommendation")
 async def predict_recommendation(product_var_name: Annotated[str, Form()], date_var_name: Annotated[str, Form()], file: UploadFile = File(...)):
     if not file.filename.endswith('.csv'):
@@ -103,6 +103,15 @@ async def predict_recommendation(product_var_name: Annotated[str, Form()], date_
     finally:
         if temp_path and os.path.exists(temp_path):
             os.unlink(temp_path)
+
+@app.post("/delete-models-dir")
+async def delete_models():
+    try:
+        if os.path.exists("models"):
+            shutil.rmtree("models")
+        return {"status": "Models deleted successfully"}
+    except Exception as e:
+        return {"status": "Models deleted successfully"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

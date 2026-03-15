@@ -20,6 +20,7 @@ A **free** API providing machine-learning-driven product recommendations for Foo
 - `POST /upload-csv` – Upload a CSV file to preview its data (returns row count and first 5 rows)
 - `POST /train-model` – Upload a CSV file, provide `product_var_name` and `date_var_name` as form data, to train the XGBoost model
 - `POST /predict-recommendation` – Upload a CSV file, provide `product_var_name` and `date_var_name` as form data, to get product recommendations for upcoming events
+- `POST /delete-models-dir` – Delete the local `models/` folder (removes trained model and translators). Use this if you want to clear the cached model and force retraining.
 
 No API key or authentication is required for the endpoints.
 
